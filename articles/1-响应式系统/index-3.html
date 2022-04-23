@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>1.实现最简单的响应式系统</title>
+</head>
+<body>
+  <div id="app"></div>
+  <script>
+    const $app = document.querySelector('#app')
+    // 原始数据
+    let state = {
+      text: 'hello fatfish'
+    }
+
+    const bucket = new WeakMap()
+    let activeEffect
+    const effect = function (fn) {
+      activeEffect = fn
+      fn()
+    }
+    const proxyState = new Proxy(state, {
+      get (target, key) {
+        const value = target[ key ]
+
+        if (!activeEffect) {
+          return
+        }
+
+        let depsMap = bucket.get(target)
+
+        if (!depsMap) {
+          bucket.set(target, (depsMap = new Map()))
+        }
+
+        let deps = depsMap.get(key)
+
+        if (!deps) {
+          depsMap.set(key, (deps = new Set()))
+        }
+
+        deps.add(activeEffect)
+
+        console.log(`get ${key}: ${value}`)
+        return value
+      },
+      set (target, key, newValue) {
+        console.log(`set ${key}: ${newValue}`)
+
+        target[ key ] = newValue
+        
+        const depsMap = bucket.get(target)
+
+        if (!depsMap) {
+          return
+        }
+
+        const effects = depsMap.get(key)
+
+        effects && effects.forEach((fn) => fn())
+      }
+    })
+
+    effect(() => {
+      console.log('执行了effect')
+      $app.innerText = proxyState.text
+    })
+
+    setTimeout(() => {
+      proxyState.text = 'hello Vue3'
+    }, 1000)
+  </script>
+</body>
+</html>
