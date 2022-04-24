@@ -7,21 +7,22 @@
   <title>1.实现最简单的响应式系统</title>
 </head>
 <body>
-  <div id="app"></div>
+  <div id="container">
+    <div id="app1"></div>
+    <div id="app2"></div>
+  </div>
   <script>
-    const $app = document.querySelector('#app')
-    // 原始数据
-    let state = {
-      text: 'hello fatfish'
-    }
+    const $app1 = document.querySelector('#app1')
+    const $app2 = document.querySelector('#app2')
 
     const bucket = new Set()
+
     let activeEffect
     const effect = function (fn) {
       activeEffect = fn
       fn()
     }
-    const proxyState = new Proxy(state, {
+    const state = new Proxy({ text: 'hello fatfish', text2: 'hello fatfish2' }, {
       get (target, key) {
         const value = target[ key ]
         bucket.add(activeEffect)
@@ -36,13 +37,19 @@
       }
     })
 
-    effect(() => {
-      console.log('执行了effect')
-      $app.innerText = proxyState.text
+    effect(function effect1 () {
+      console.log('执行了effect1')
+      $app1.innerText = state.text
+    })
+
+    effect(function effect2() {
+      console.log('执行了effect2')
+      $app2.innerText = state.text2
     })
 
     setTimeout(() => {
-      proxyState.text = 'hello Vue3'
+      state.text = 'hello Vue3'
+      state.text2 = 'hello Vue3-2'
     }, 1000)
   </script>
 </body>
