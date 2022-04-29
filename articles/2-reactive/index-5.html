@@ -78,14 +78,17 @@
       // 真正读取依赖当前属性值key的effects
       // TODO: 新增
       const effects = depsMap.get(key)
-      const effectsToRun = new Set(effects)
+      const effectsToRun = new Set()
 
-      // 挨个执行即可
-      effectsToRun && effectsToRun.forEach((fn) => {
-        // TODO: 新增
+      // TODO: 新增
+      effects && effects.forEach((fn) => {
         if (fn !== activeEffect) {
-          fn()
+          effectsToRun.add(fn)
         }
+      })
+      
+      effectsToRun && effectsToRun.forEach((fn) => {
+        fn()
       })
     }
 
