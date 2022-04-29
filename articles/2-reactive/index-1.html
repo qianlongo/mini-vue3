@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>1.实现最简单的响应式系统</title>
+</head>
+<body>
+  <div id="app"></div>
+  <script>
+    const $app = document.querySelector('#app')
+    const bucket = new WeakMap()
+    // 重新定义bucket数据类型为WeakMap
+    let activeEffect
+    const effect = function (fn) {
+      activeEffect = fn
+      fn()
+    }
+    function track (target, key) {
+      // activeEffect无值意味着没有执行effect函数，无法收集依赖，直接return掉
+      if (!activeEffect) {
+        return
+      }
+      // 每个target在bucket中都是一个Map类型： key => effects
+      let depsMap = bucket.get(target)
+      // 第一次拦截，depsMap不存在，先创建联系
+      if (!depsMap) {
+        bucket.set(target, (depsMap = new Map()))
+      }
+      // 根据当前读取的key，尝试读取key的effects函数  
+      let deps = depsMap.get(key)
+      
+      if (!deps) {
+        // deps本质是个Set结构，即一个key可以存在多个effect函数，被多个effect所依赖
+        depsMap.set(key, (deps = new Set()))
+      }
+      // 将激活的effectFn存进桶中
+      deps.add(activeEffect)
+    }
+
+    function trigger (target, key) {
+      // 读取depsMap 其结构是 key => effects
+      const depsMap = bucket.get(target)
+
+      if (!depsMap) {
+        return
+      }
+      // 真正读取依赖当前属性值key的effects
+      const effects = depsMap.get(key)
+      // 挨个执行即可
+      effects && effects.forEach((fn) => fn())
+    }
+
+    function reactive (state) {
+      return new Proxy(state, {
+        get (target, key) {
+          const value = target[ key ]
+
+          track(target, key)
+          console.log(`get ${key}: ${value}`)
+          return value
+        },
+        set (target, key, newValue) {
+          console.log(`set ${key}: ${newValue}`)
+          // 设置属性值
+          target[ key ] = newValue
+
+          trigger(target, key)
+        }
+      })
+    }
+
+    const obj = reactive({
+      ok: true,
+      text: 'hello fatfish'
+    })
+
+    effect(() => {
+      console.log('执行了effect')
+      $app.innerText = obj.ok ? obj.text : 'not'
+    })
+
+    // 此时如果将obj.ok设置为false 同时也再次设置obj.text = 'xxx'，副作用函数还是会执行，
+    // 其实就是产生了遗留的副作用函数,需要再每次读取前，将副作用含从他的依赖集合中删除
+  </script>
+</body>
+</html>
