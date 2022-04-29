@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>1.解决无限嵌套-2</title>
+</head>
+<body>
+  <div id="app"></div>
+  <script>
+    const $app = document.querySelector('#app')
+    const bucket = new WeakMap()
+    // 重新定义bucket数据类型为WeakMap
+    let activeEffect
+    const effectStack = []
+    const effect = function (fn) {
+      // TODO: 我们目的是在key被读取的时候，找到当前副作用函数被存在哪些集合中
+      const effectFn = function () {
+        cleanup(effectFn)
+        activeEffect = effectFn
+        // TODO: 将当前的effect入栈处理
+        effectStack.push(effectFn)
+        fn()
+        // 执行结束之后再出栈，并且将activeEffect指向上一个
+        effectStack.pop()
+        activeEffect = effectStack[ effectStack.length - 1 ]
+      }
+      // 存储每一个依赖集合
+      effectFn.deps = []
+      effectFn()
+    }
+
+    // 清楚遗留的副作用函数
+    // TODO: 新增
+    function cleanup (effectFn) {
+      for (let i = 0; i < effectFn.deps.length; i ++) {
+        const deps = effectFn.deps[ i ]
+        deps.delete(effectFn)
+      }
+
+      // 清除之后重置为0
+      effectFn.deps.length = 0
+    }
+
+    function track (target, key) {
+      // activeEffect无值意味着没有执行effect函数，无法收集依赖，直接return掉
+      if (!activeEffect) {
+        return
+      }
+      // 每个target在bucket中都是一个Map类型： key => effects
+      let depsMap = bucket.get(target)
+      // 第一次拦截，depsMap不存在，先创建联系
+      if (!depsMap) {
+        bucket.set(target, (depsMap = new Map()))
+      }
+      // 根据当前读取的key，尝试读取key的effects函数  
+      let deps = depsMap.get(key)
+      
+      if (!deps) {
+        // deps本质是个Set结构，即一个key可以存在多个effect函数，被多个effect所依赖
+        depsMap.set(key, (deps = new Set()))
+      }
+      // 将激活的effectFn存进桶中
+      deps.add(activeEffect)
+      // TODO: 这样就方便在下次读取的时候直接从deps中删除effectFn副作用函数了
+      // 从而让下次key更新的时候，不会执行effectFn函数
+      activeEffect.deps.push(deps)
+    }
+
+    function trigger (target, key) {
+      // 读取depsMap 其结构是 key => effects
+      const depsMap = bucket.get(target)
+
+      if (!depsMap) {
+        return
+      }
+      // 真正读取依赖当前属性值key的effects
+      // TODO: 新增
+      const effects = depsMap.get(key)
+      const effectsToRun = new Set(effects)
+
+      // 挨个执行即可
+      effectsToRun && effectsToRun.forEach((fn) => fn())
+    }
+
+    function reactive (state) {
+      return new Proxy(state, {
+        get (target, key) {
+          const value = target[ key ]
+
+          track(target, key)
+          console.log(`get ${key}: ${value}`)
+          return value
+        },
+        set (target, key, newValue) {
+          console.log(`set ${key}: ${newValue}`)
+          // 设置属性值
+          target[ key ] = newValue
+
+          trigger(target, key)
+        }
+      })
+    }
+
+    const obj = reactive({
+      foo: 1,
+    })
+
+    effect(() => {
+      console.log('执行了effect1')
+      // TODO:  读取和设置在同一个函数内会发现溢出
+      /*
+        想象一下
+        1. obj.foo 先读取 会发生track
+        2. 再进行设置，会将依赖集合拿出来执行
+        3. 执行过程中又会发生读取重复1和2的步骤
+        4. 从而发生溢出了
+      */
+      $app.innerText = obj.foo++
+    })
+  </script>
+</body>
+</html>
