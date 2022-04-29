@@ -4,9 +4,10 @@
   <meta charset="UTF-8">
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>1.解决无限嵌套-2</title>
+  <title>1.调度执行</title>
 </head>
 <body>
+  <div>调度执行，是指的将副作用函数的控制权交给用户</div>
   <div id="app"></div>
   <script>
     const $app = document.querySelector('#app')
@@ -14,7 +15,8 @@
     // 重新定义bucket数据类型为WeakMap
     let activeEffect
     const effectStack = []
-    const effect = function (fn) {
+    // TODO: 增加options
+    const effect = function (fn, options = {}) {
       // TODO: 我们目的是在key被读取的时候，找到当前副作用函数被存在哪些集合中
       const effectFn = function () {
         cleanup(effectFn)
@@ -28,6 +30,7 @@
       }
       // 存储每一个依赖集合
       effectFn.deps = []
+      effectFn.options = options
       effectFn()
     }
 
@@ -87,8 +90,12 @@
         }
       })
       
-      effectsToRun && effectsToRun.forEach((fn) => {
-        fn()
+      effectsToRun && effectsToRun.forEach((effectFn) => {
+        if (effectFn.options.scheduler) {
+          effectFn.options.scheduler(effectFn)
+        } else {
+          effectFn()
+        }
       })
     }
 
@@ -119,6 +126,10 @@
       console.log('执行了effect1')
       console.log('log', obj.foo)
       // $app.innerText = obj.foo++
+    }, {
+      scheduler (fn) {
+        setTimeout(fn, 0)
+      }
     })
 
     ++obj.foo
