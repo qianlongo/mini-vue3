@@ -128,22 +128,40 @@
       })
     }
 
+    function computed (getter) {
+      const effectFn = effect(getter, {
+        lazy: true
+      })
+
+      const obj = {
+        get value () {
+          return effectFn()
+        }
+      }
+
+      return obj
+    }
+
     const obj = reactive({
       foo: 1,
       bar: 2,
     })
 
-    const effectFn2 = effect(() => {
-      console.log('执行了effect1')
-      console.warn('log', obj.foo, obj.bar)
+    // const effectFn2 = effect(() => {
+    //   console.log('执行了effect1')
+    //   console.warn('log', obj.foo, obj.bar)
 
-      return obj.foo + obj.foo
-    }, {
-      lazy: true,
-    })
-    const value = effectFn2()
+    //   return obj.foo + obj.foo
+    // }, {
+    //   lazy: true,
+    // })
+    // const value = effectFn2()
 
-    console.log(value, '---value')
+    const sumRes = computed(() => obj.foo + obj.bar)
+    // 会执行多次计算逻辑，即便obj.foo和obj.bar都没有发生变化
+    console.log(sumRes.value, '---value')
+    console.log(sumRes.value, '---value')
+    console.log(sumRes.value, '---value')
   </script>
 </body>
 </html>
