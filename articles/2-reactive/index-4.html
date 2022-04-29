@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>1.解决副作用函数嵌套</title>
+  <title>1.解决副作用函数嵌套-2</title>
 </head>
 <body>
   <div id="app"></div>
@@ -13,12 +13,18 @@
     const bucket = new WeakMap()
     // 重新定义bucket数据类型为WeakMap
     let activeEffect
+    const effectStack = []
     const effect = function (fn) {
       // TODO: 我们目的是在key被读取的时候，找到当前副作用函数被存在哪些集合中
       const effectFn = function () {
         cleanup(effectFn)
         activeEffect = effectFn
+        // TODO: 将当前的effect入栈处理
+        effectStack.push(effectFn)
         fn()
+        // 执行结束之后再出栈，并且将activeEffect指向上一个
+        effectStack.pop()
+        activeEffect = effectStack[ effectStack.length - 1 ]
       }
       // 存储每一个依赖集合
       effectFn.deps = []
