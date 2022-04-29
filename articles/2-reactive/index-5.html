@@ -81,7 +81,12 @@
       const effectsToRun = new Set(effects)
 
       // 挨个执行即可
-      effectsToRun && effectsToRun.forEach((fn) => fn())
+      effectsToRun && effectsToRun.forEach((fn) => {
+        // TODO: 新增
+        if (fn !== activeEffect) {
+          fn()
+        }
+      })
     }
 
     function reactive (state) {
