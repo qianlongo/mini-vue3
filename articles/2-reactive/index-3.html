@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>1.解决遗留的副作用函数</title>
+  <title>1.解决副作用函数嵌套</title>
 </head>
 <body>
   <div id="app"></div>
@@ -98,17 +98,22 @@
     }
 
     const obj = reactive({
-      ok: true,
-      text: 'hello fatfish'
+      foo: 'foo',
+      bar: 'bar',
     })
 
     effect(() => {
-      console.log('执行了effect')
-      $app.innerText = obj.ok ? obj.text : 'not'
+      console.log('执行了effect1')
+
+      effect(() => {
+        console.log('执行了effect2')
+        $app.innerText = obj.foo
+      })
+
+      $app.innerText = obj.bar
     })
 
-    // 此时如果将obj.ok设置为false 同时也再次设置obj.text = 'xxx'，副作用函数还是会执行，
-    // 其实就是产生了遗留的副作用函数,需要再每次读取前，将副作用含从他的依赖集合中删除
+    // 此时如果我设置obj.foo = 'xxx'，会发现执行的却是effect2, innerText也被设置成了bar，而不是xxx
   </script>
 </body>
 </html>
