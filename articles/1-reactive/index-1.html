@@ -37,6 +37,22 @@
     setTimeout(() => {
       state.text = 'hello Vue3'
     }, 1000)
+
+
+    const state2 = new Proxy({
+      name: '胖头鱼'
+    }, {
+      get (target, key) {
+        console.log('被读取了', key)
+        return target[ key ]
+      },
+      set (target, key, value) {
+        target[ key ] = value
+        console.log('被设置了', key, value)
+      }
+    })
+
+    state2.name = '前端'
   </script>
 </body>
 </html>
