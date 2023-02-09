@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document</title>
+</head>
+<body>
+  <script>
+    const bucket = new Set()
+
+
+    const state = new Proxy({
+      name: 'xxx'
+    }, {
+      get (target, key) {
+        bucket.add(effect)
+        return target[ key ]
+      },
+      set (target, key, value) {
+        bucket.forEach((fn) => fn())
+        target[ key ] = value
+      }
+    })
+
+    function effect () {
+      console.log(state.name, 'state.name')
+    }
+
+    effect()
+
+
+    const data = new Proxy({
+      name: 'fatfish'
+    }, {
+      get (target, key) {
+        console.log(key, '被读取了')
+        return target[ key ]
+      },
+      set (target, key, value) {
+        console.log(key, '被设置了')
+        target[ key ] = value
+      }
+    })
+
+    data.name = '111'
+  </script>
+</body>
+</html>
