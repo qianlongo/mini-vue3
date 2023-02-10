@@ -55,8 +55,9 @@
       }
 
       const effects = depsMap.get(key)
+      const effectToRun = new Set(effects)
 
-      effects && effects.forEach((fn) => fn && fn())
+      effectToRun && effectToRun.forEach((fn) => fn && fn())
     }
 
     function cleanup (effectFn) {
@@ -71,7 +72,7 @@
 
     const effect = (fn) => {
       const effectFn = () => {
-        // 清除副作用函数，
+        // 清除副作用函数，让每次重新收集都是最新的，减少历史副作用函数。
         cleanup(effectFn)
         activeEffect = effectFn
         fn()
