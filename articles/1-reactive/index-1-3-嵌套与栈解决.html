@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document</title>
+</head>
+<body>
+  <script>
+    let bucket = new WeakMap()
+    let activeEffect
+    let effectStack = []
+
+    const state = new Proxy({
+      foo: true,
+      bar: true,
+    }, {
+      get (target, key) {
+        track(target, key)
+        return target[ key ]
+      },
+      set (target, key, value) {
+        target[ key ] = value
+        trigger(target, key)
+      }
+    })
+
+    function track (target, key) {
+      if (!activeEffect) {
+        return
+      }
+
+      let depsMap = bucket.get(target)
+
+      if (!depsMap) {
+        bucket.set(target, (depsMap = new Map()))
+      }
+
+      let deps = depsMap.get(key)
+
+      if (!deps) {
+        depsMap.set(key, (deps = new Set()))
+      }
+
+      deps.add(activeEffect)
+      // activeEffect被放到了哪个Set？保存联系
+      activeEffect.deps.push(deps)
+    }
+
+    function trigger (target, key) {
+      const depsMap = bucket.get(target)
+
+      if (!depsMap) {
+        return
+      }
+
+      const effects = depsMap.get(key)
+      const effectToRun = new Set(effects)
+
+      effectToRun && effectToRun.forEach((fn) => fn && fn())
+    }
+
+    function cleanup (effectFn) {
+      for (let i = 0, len = effectFn.deps.length; i < len; i++) {
+        const deps = effectFn.deps[i]
+        // 从key收集的依赖集合中删除目前的副作用函数
+        deps.delete(effectFn)
+      }
+
+      effectFn.deps.length = 0
+    }
+
+    const effect = (fn) => {
+      const effectFn = () => {
+        // 清除副作用函数，让每次重新收集都是最新的，减少历史副作用函数。
+        cleanup(effectFn)
+        activeEffect = effectFn
+        effectStack.push(effectFn)
+        fn()
+        // 当某个effect执行完成之后，要把当前的activeEffect设置为上一个
+        effectStack.pop()
+        activeEffect = effectStack[ effectStack.length - 1 ]
+      }
+
+      effectFn.deps = []
+
+      effectFn()
+    }
+
+    let temp1
+    let temp2
+
+    effect(() => {
+      console.log('effectFn1 执行了')
+
+      effect(() => {
+        console.log('effectFn2 执行了')
+
+        temp2 = state.bar
+      })
+
+      temp1 = state.foo
+    })
+    // state.foo = 'xxx'
+
+  </script>
+</body>
+</html>
