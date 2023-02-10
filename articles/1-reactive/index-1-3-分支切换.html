@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document</title>
+</head>
+<body>
+  <script>
+    let bucket = new WeakMap()
+    let activeEffect
+
+    const state = new Proxy({
+      ok: true,
+      name: 'sex'
+    }, {
+      get (target, key) {
+        track(target, key)
+        return target[ key ]
+      },
+      set (target, key, value) {
+        target[ key ] = value
+        trigger(target, key)
+      }
+    })
+
+    function track (target, key) {
+      if (!activeEffect) {
+        return
+      }
+
+      let depsMap = bucket.get(target)
+
+      if (!depsMap) {
+        bucket.set(target, (depsMap = new Map()))
+      }
+
+      let deps = depsMap.get(key)
+
+      if (!deps) {
+        depsMap.set(key, (deps = new Set()))
+      }
+
+      deps.add(activeEffect)
+      // activeEffect被放到了哪个Set？保存联系
+      activeEffect.deps.push(deps)
+    }
+
+    function trigger (target, key) {
+      const depsMap = bucket.get(target)
+
+      if (!depsMap) {
+        return
+      }
+
+      const effects = depsMap.get(key)
+
+      effects && effects.forEach((fn) => fn && fn())
+    }
+
+    function cleanup (effectFn) {
+      for (let i = 0, len = effectFn.deps.length; i < len; i++) {
+        const deps = effectFn.deps[i]
+        // 从key收集的依赖集合中删除目前的副作用函数
+        deps.delete(effectFn)
+      }
+
+      effectFn.deps.length = 0
+    }
+
+    const effect = (fn) => {
+      const effectFn = () => {
+        // 清除副作用函数，
+        cleanup(effectFn)
+        activeEffect = effectFn
+        fn()
+      }
+
+      effectFn.deps = []
+
+      effectFn()
+    }
+
+
+    effect(() => {
+      const text = state.ok ? state.name : 'not'
+      console.log(text)
+    })
+
+  </script>
+</body>
+</html>
