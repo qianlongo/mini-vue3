@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document</title>
+</head>
+<body>
+  <script>
+    // 调度器，我理解就是让用户来决定再次渲染的时机
+    let bucket = new WeakMap()
+    let activeEffect
+    let effectStack = []
+
+    const state = new Proxy({
+      foo: 1,
+    }, {
+      get (target, key) {
+        track(target, key)
+        return target[ key ]
+      },
+      set (target, key, value) {
+        target[ key ] = value
+        trigger(target, key)
+      }
+    })
+
+    function track (target, key) {
+      if (!activeEffect) {
+        return
+      }
+
+      let depsMap = bucket.get(target)
+
+      if (!depsMap) {
+        bucket.set(target, (depsMap = new Map()))
+      }
+
+      let deps = depsMap.get(key)
+
+      if (!deps) {
+        depsMap.set(key, (deps = new Set()))
+      }
+
+      deps.add(activeEffect)
+      // activeEffect被放到了哪个Set？保存联系
+      activeEffect.deps.push(deps)
+    }
+
+    function trigger (target, key) {
+      const depsMap = bucket.get(target)
+
+      if (!depsMap) {
+        return
+      }
+
+      const effects = depsMap.get(key)
+      const effectToRun = new Set(effects)
+
+      effects && effects.forEach((fn) => {
+        if (fn !== activeEffect) {
+          effectToRun.add(fn)
+        }
+      })
+
+      effectToRun.forEach((fn) => {
+        if (fn.options.scheduler) {
+          fn.options.scheduler(fn)
+        } else {
+          fn()
+        }
+      })
+    }
+
+    function cleanup (effectFn) {
+      for (let i = 0, len = effectFn.deps.length; i < len; i++) {
+        const deps = effectFn.deps[i]
+        // 从key收集的依赖集合中删除目前的副作用函数
+        deps.delete(effectFn)
+      }
+
+      effectFn.deps.length = 0
+    }
+
+    const effect = (fn, options = {}) => {
+      const effectFn = () => {
+        // 清除副作用函数，让每次重新收集都是最新的，减少历史副作用函数。
+        cleanup(effectFn)
+        activeEffect = effectFn
+        effectStack.push(effectFn)
+        const res = fn()
+        // 当某个effect执行完成之后，要把当前的activeEffect设置为上一个
+        effectStack.pop()
+        activeEffect = effectStack[ effectStack.length - 1 ]
+
+        return res
+      }
+
+      effectFn.options = options
+      effectFn.deps = []
+
+      if (!options.lazy) {
+        effectFn()
+      }
+
+      return effectFn
+    }
+
+    const computed = (gettter) => {
+      const effectFn = effect(gettter, {
+        lazy: true,
+        scheduler () {
+          if (!dirty) {
+            dirty = true
+            trigger(obj, 'value')
+          }
+        }
+      })
+      // 当依赖的值发生了变化，就认为是脏数据，要重新进行计算
+      let dirty = true
+      let value
+
+      const obj = {
+        get value () {
+          console.log(dirty, 'dirty')
+          if (dirty) {
+            // 不特殊处理的话 effectFn 内部的响应式数据不会将外部的副作用函数收集起来
+            // 因为obj.value不是响应式的
+            value = effectFn()
+            dirty = false
+          }
+          // 手动进行追踪，此时obj的value就收集到了外部的副作用函数
+          track(obj, 'value')
+          
+          return value
+        }
+      }
+
+      return obj
+    }
+
+    const b = computed(() => state.foo + 1)
+
+    effect(() => {
+      console.log(b.value)
+    })
+
+    state.foo++
+
+    // 1. 只有当使用的时候才进行计算
+    // 2. 要做依赖缓存，如果依赖的值没有变化就不应该重新进行求值
+    // 3. 处理computed中依赖计算属性但是无法自动更新的问题
+  </script>
+</body>
+</html>
