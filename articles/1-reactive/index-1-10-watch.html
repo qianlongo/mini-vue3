@@ -118,17 +118,38 @@
         // value[ k ]就完成了读取
         traverse(value[ k ], seen)
       }
+
+      return value
     }
-    const watch = (source, cb) => {
-      effect(() => traverse(source), {
+    const watch = (source, cb, options = {}) => {
+      let getter = typeof source === 'function' ? source : () => traverse(source)
+      let oldVal
+      let newVal
+
+      const job = () => {
+        newVal = effectFn()
+        cb(newVal, oldVal)
+        oldVal = newVal
+      }
+
+      const effectFn = effect(() => state.foo, {
         scheduler () {
-          cb()
-        }
+          job()
+        },
+        lazy: true
       })
+
+      if (options.immediate) {
+        job()
+      } else {
+        oldVal = effectFn()
+      }
     }
 
-    watch(state, () => {
-      console.log(state.foo, '---')
+    watch(state, (newVal, oldVal) => {
+      console.log(newVal, oldVal, '---')
+    }, {
+      immediate: true
     })
 
 
