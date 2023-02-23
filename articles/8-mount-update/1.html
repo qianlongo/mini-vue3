@@ -32,6 +32,14 @@
           })
         }
 
+        // 如果props存在就处理
+        if (vnode.props) {
+          for (const key in vnode.props) {
+            // el.setAttribute(key, vnode.props[ key ])
+            el[ key ] = vnode.props[ key ]
+          }
+        }
+
         insert(el, container)
       }
       // patch函数既可以用来打补丁也可以用来挂载
@@ -71,6 +79,9 @@
 
     const vnode = {
       type: 'div',
+      props: {
+        id: 'foo'
+      },
       children: [
         {
           type: 'p',
