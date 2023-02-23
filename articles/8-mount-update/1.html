@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document</title>
+  <script src="https://unpkg.com/@vue/reactivity@3.0.5/dist/reactivity.global.js"></script>
+</head>
+<body>
+  <div id="app"></div>
+  <script>
+    const { effect, ref, reactive } = VueReactivity
+
+    function createRenderer (options) {
+      const { 
+        createElement,
+        insert,
+        setElementText
+      } = options
+
+      function mountElement (vnode, container) {
+        const el = createElement(vnode.type)
+
+        if (typeof vnode.children === 'string') {
+          setElementText(el, vnode.children)
+        } else if (Array.isArray(vnode.children)) {
+          // 如果子节点是一个数组则要进行递归渲染
+          vnode.children.forEach((child) => {
+            // 因为是首次渲染，所以n1传的null
+            patch(null, child, el)
+          })
+        }
+
+        insert(el, container)
+      }
+      // patch函数既可以用来打补丁也可以用来挂载
+      function patch (n1, n2, container) {
+        // 旧的vnode不存在则是要进行渲染
+        if (!n1) {
+          mountElement(n2, container)
+        } else {
+          // 旧的n1和新的n2都存在则是要更新、进行打补丁
+        }
+      }
+
+      function render (vnode, container) {
+        // 新vnode存在，将其传递给patch函数进行打补丁
+        if (vnode) {
+          patch(container._vnode, vnode, container)
+        } else {
+          // 新vnode不存在，旧vnode存在意味着是卸载操作
+          if (container._vnode) {
+            container.innerHTML = ''
+          }
+          // 旧vnode不存在则什么都不用做
+        }
+
+        container._vnode = vnode
+      }
+
+      function hydrate (vnode, container) {
+
+      }
+
+      return {
+        render,
+        hydrate
+      }
+    }
+
+    const vnode = {
+      type: 'div',
+      children: [
+        {
+          type: 'p',
+          children: 'hello'
+        }
+      ]
+    }
+
+    const renderer = createRenderer({
+      createElement (tag) {
+        return document.createElement(tag)
+      },
+      setElementText (el, text) {
+        el.textContent = text
+      },
+      // 注意如果anchor是null其作用和appendChild是一致的
+      insert (el, parent, anchor = null) {
+        parent.insertBefore(el, anchor)
+      }
+    })
+
+    renderer.render(vnode, document.querySelector('#app'))
+  </script>
+</body>
+</html>
