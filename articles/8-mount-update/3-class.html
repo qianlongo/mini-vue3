@@ -53,8 +53,16 @@
         patchProps
       } = options
 
+      function unmount (vnode) {
+        const parent = vnode.el.parentNode
+
+        if (parent) {
+          parent.removeChild(vnode.el)
+        }
+      }
+
       function mountElement (vnode, container) {
-        const el = createElement(vnode.type)
+        const el = vnode.el = createElement(vnode.type)
 
         if (typeof vnode.children === 'string') {
           setElementText(el, vnode.children)
@@ -96,7 +104,7 @@
         } else {
           // 新vnode不存在，旧vnode存在意味着是卸载操作
           if (container._vnode) {
-            container.innerHTML = ''
+            unmount(container._vnode)
           }
           // 旧vnode不存在则什么都不用做
         }
@@ -164,6 +172,9 @@
     })
 
     renderer.render(button, document.querySelector('#app'))
+    setTimeout(() => {
+      renderer.render(null, document.querySelector('#app'))
+    }, 2000)
   </script>
 </body>
 </html>
