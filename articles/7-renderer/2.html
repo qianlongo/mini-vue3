@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document</title>
+  <script src="https://unpkg.com/@vue/reactivity@3.0.5/dist/reactivity.global.js"></script>
+</head>
+<body>
+  <div id="app"></div>
+  <script>
+    const { effect, ref, reactive } = VueReactivity
+
+    const renderer = (domString, container) => {
+      container.innerHTML = domString
+    }
+
+    function createRenderer () {
+      // patch函数既可以用来打补丁也可以用来挂载
+      function patch (n1, n2, container) {
+
+      }
+
+      function render (vnode, container) {
+        // 新vnode存在，将其传递给patch函数进行打补丁
+        if (vnode) {
+          patch(container._vnode, vnode, container)
+        } else {
+          // 新vnode不存在，旧vnode存在意味着是卸载操作
+          if (container._vnode) {
+            container.innerHTML = ''
+          }
+          // 旧vnode不存在则什么都不用做
+        }
+
+        container._vnode = vnode
+      }
+
+      function hydrate (vnode, container) {
+
+      }
+
+      return {
+        render,
+        hydrate
+      }
+    }
+
+    const obj = reactive({
+      count: 1
+    })
+
+    effect(() => {
+      renderer(`<h1>${ obj.count }</h1>`, document.getElementById('app'))
+    })
+
+    obj.count++
+
+    setInterval(() => {
+      obj.count++
+    }, 1000)
+  </script>
+</body>
+</html>
