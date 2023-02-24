@@ -88,12 +88,28 @@
       }
       // patch函数既可以用来打补丁也可以用来挂载
       function patch (n1, n2, container) {
-        // 旧的vnode不存在则是要进行渲染
-        if (!n1) {
-          mountElement(n2, container)
-        } else {
-          // 旧的n1和新的n2都存在则是要更新、进行打补丁
+        // 两个虚拟节点要进行diff，一定要是同类型的节点才有意义
+        // 否则进行删除即可
+        if (n1 && n1.type !== n2.type) {
+          unmount(n1)
+          n1 = null
         }
+        const { type } = n2
+        // 每种不同的节点都需要有不同的方法来进行diff
+        // 旧的vnode不存在则是要进行渲染
+        if (typeof type === 'string') {
+          if (!n1) {
+            mountElement(n2, container)
+          } else {
+            // 旧的n1和新的n2都存在则是要更新、进行打补丁
+            // patchElement(n1, n2)
+          }
+        } else if (type === 'object') {
+          // 组件
+        } else if (type === 'xxx') {
+
+        }
+        
       }
 
       function render (vnode, container) {
