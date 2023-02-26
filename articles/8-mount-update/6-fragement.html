@@ -184,6 +184,11 @@
       } = options
 
       function unmount (vnode) {
+        if (vnode.type === Fragment) {
+          vnode.children.forEach((c) => unmount(c))
+          return
+        }
+
         const parent = vnode.el.parentNode
 
         if (parent) {
@@ -302,8 +307,21 @@
       patchProps,
     })
     const node = {
-      type: Text,
-      children: 'hello world'
+      type: Fragment,
+      children: [
+        {
+          type: 'li',
+          children: 'text1',
+        },
+        {
+          type: 'li',
+          children: 'text2',
+        },
+        {
+          type: 'li',
+          children: 'text3',
+        },
+      ]
     }
 
     renderer.render(node, document.querySelector('#app'))
