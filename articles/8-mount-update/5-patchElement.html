@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document</title>
+  <script src="https://unpkg.com/@vue/reactivity@3.0.5/dist/reactivity.global.js"></script>
+</head>
+<body>
+  <div id="app"></div>
+  <script>
+    const { effect, ref } = VueReactivity
+
+    function shouldSetAsProps (el, key, value) {
+      if (key === 'form' && ele.tagName === 'input') {
+        return false
+      }
+
+      return key in el
+    }
+
+    function normalizeClass (value) {
+      // 可以是1字符串 2数组 3 对象
+      let className = ''
+      const type = typeof value
+
+      if (type === 'string') {
+        className = value
+        // 不考虑传空null
+      } else if (Array.isArray(value)) {
+        value.forEach((it) => {
+          const res = normalizeClass(it)
+          if (res) {
+            className += res + ' '
+          }
+        })
+      } else if (type === 'object') {
+        className = Object.entries(value).filter(([ key, value ]) => {
+          return value
+        }).map(([ key, value ]) => key).join(' ')
+      }
+
+      return className.trim()
+    }
+
+    function createElement (tag) {
+      return document.createElement(tag)
+    }
+
+    function setElementText (el, text) {
+      el.textContent = text
+    }
+
+    function insert (el, parent, anchor = null) {
+      parent.insertBefore(el, anchor)
+    }
+
+    function patchProps (el, key, prevValue, nextValue) {
+      if (/^on/.test(key)) {
+        const invokers = el._vei || (el._vei = {})
+        let invoker = invokers[ key ]
+        const name = key.slice(2).toLowerCase()
+        // 这样的坏处是每次都要移除，性能很差
+        // prevValue && el.removeEventerListener(name, prevValue)
+        // 添加事件
+        if (nextValue) {
+          if (!invoker) {
+            invoker = el[ key ] = (e) => {
+              console.log(e.timeStamp, invoker.attached)
+              // 事件的触发时间小于绑定时间则不执行回调
+              if (e.timeStamp < invoker.attached) {
+                return
+              }  
+
+              if (Array.isArray(invoker.value)) {
+                invoker.value.forEach((fn) => {
+                  fn(e)
+                })
+              } else {
+                invoker.value(e)
+              }
+            }
+
+            invoker.value = nextValue
+            invoker.attached = performance.now()
+            el.addEventListener(name, invoker)
+          } else {
+            invoker.value = nextValue
+          }
+          // 要进行移除事件
+        } else if (invoker) {
+          el.removeEventerListener(name, invoker)
+        }
+      } else if (key === 'class') {
+        el.className = nextValue
+      } else if (shouldSetAsProps(el, key, nextValue)) {
+        const type = typeof el[ key ]
+
+        if (type === 'boolean' && nextValue === '') {
+          el[ key ] = true
+        } else {
+          el[ key ] = nextValue
+        }
+      } else {
+        el.setAttribute(key, vnode.props[ key ])
+      }
+    }
+    // 给元素打补丁
+    function patchElement (n1, n2) {
+      const el = n2.el = n1.el
+      const oldProps = n1.props
+      const newProps = n2.props
+      // 更新props
+      for (const key in newProps) {
+        if (key in newProps) {
+          if (newProps[key] !== oldProps[ key ]) {
+            patchProps(el, key, oldProps[key], newProps[key])
+          }
+        }
+      }
+
+      for (const key in oldProps) {
+        if (!(key in newProps)) {
+          patchProps(el, key, oldProps[key], null)
+        }
+      }
+      // 给子节点打补丁
+      patchChildren(n1, n2, el)
+    }
+
+    function patchChildren (n1, n2, container) {
+      // 根据不同的类型进行打补丁
+      // 从新元素开始，看老元素
+      if (typeof n2.children === 'string') {
+        // 旧的节点有3种可能
+        // 1. 空节点 2. 文本节点 3. 一组子节点
+        if (Array.isArray(n1.children)) {
+          // 将3挨个卸载掉
+          n1.children((c) => unmount(c))
+        }
+
+        setElementText(container, n2.children)
+      } else if (Array.isArray(n2.children)) {
+        // 同样的是三种可能
+        if (Array.isArray(n1.children)) {
+          // diff算法
+          // 暂时傻瓜式的先移除旧的子节点
+          n1.children.forEach((c) => unmount(c))
+          // 再将新的子节点进行mount
+          n2.children.forEach((c) => patch(null, c, container))
+        } else {
+          // 文本或者空的
+          setElementText(container, '')
+          n2.children.forEach((c) => patch(null, c, container))
+        }
+      } else {
+        // 新的子节点不存在
+        if (Array.isArray(n1)) {
+          n1.children.forEach((c) => unmount(c))
+        } else if (typeof n1.children === 'string') {
+          setElementText('', container)
+        }
+        // 如果没有旧的子节点，那么什么都不用做
+      }
+    }
+
+    function createRenderer (options) {
+      const { 
+        createElement,
+        insert,
+        setElementText,
+        patchProps
+      } = options
+
+      function unmount (vnode) {
+        const parent = vnode.el.parentNode
+
+        if (parent) {
+          parent.removeChild(vnode.el)
+        }
+      }
+
+      function mountElement (vnode, container) {
+        const el = vnode.el = createElement(vnode.type)
+
+        if (typeof vnode.children === 'string') {
+          setElementText(el, vnode.children)
+        } else if (Array.isArray(vnode.children)) {
+          // 如果子节点是一个数组则要进行递归渲染
+          vnode.children.forEach((child) => {
+            // 因为是首次渲染，所以n1传的null
+            patch(null, child, el)
+          })
+        }
+
+        // 如果props存在就处理
+        if (vnode.props) {
+          for (const key in vnode.props) {
+            // el.setAttribute(key, vnode.props[ key ])
+            // el[ key ] = vnode.props[ key ]
+            // const value = vnode.props[ key ]
+
+            patchProps(el, key, null, vnode.props[ key ])
+          }
+        }
+
+        insert(el, container)
+      }
+      // patch函数既可以用来打补丁也可以用来挂载
+      function patch (n1, n2, container) {
+        // 两个虚拟节点要进行diff，一定要是同类型的节点才有意义
+        // 否则进行删除即可
+        if (n1 && n1.type !== n2.type) {
+          unmount(n1)
+          n1 = null
+        }
+        const { type } = n2
+        // 每种不同的节点都需要有不同的方法来进行diff
+        // 旧的vnode不存在则是要进行渲染
+        if (typeof type === 'string') {
+          if (!n1) {
+            mountElement(n2, container)
+          } else {
+            // 旧的n1和新的n2都存在则是要更新、进行打补丁
+            patchElement(n1, n2)
+          }
+        } else if (type === 'object') {
+          // 组件
+        } else if (type === 'xxx') {
+
+        }
+        
+      }
+
+      function render (vnode, container) {
+        // 新vnode存在，将其传递给patch函数进行打补丁
+        if (vnode) {
+          patch(container._vnode, vnode, container)
+        } else {
+          // 新vnode不存在，旧vnode存在意味着是卸载操作
+          if (container._vnode) {
+            unmount(container._vnode)
+          }
+          // 旧vnode不存在则什么都不用做
+        }
+
+        container._vnode = vnode
+      }
+
+      function hydrate (vnode, container) {
+
+      }
+
+      return {
+        render,
+        hydrate
+      }
+    }
+
+    // const vnode = {
+    //   type: 'div',
+    //   props: {
+    //     id: 'foo'
+    //   },
+    //   children: [
+    //     {
+    //       type: 'p',
+    //       children: 'hello'
+    //     }
+    //   ]
+    // }
+
+    const renderer = createRenderer({
+      createElement,
+      setElementText,
+      // 注意如果anchor是null其作用和appendChild是一致的
+      insert,
+      patchProps,
+    })
+    const bol = ref(false)
+
+    effect(() => {
+      // debugger
+      const button = {
+        type: 'div',
+        props: bol.value ? {
+          onClick: () => {
+            alert('父元素click')
+          }
+        } : {},
+        children: [
+          {
+            type: 'p',
+            props: {
+              onClick: () => {
+                alert(2)
+                bol.value = true
+              }
+            },
+            children: 'text'
+          }
+        ]
+      }
+      renderer.render(button, document.querySelector('#app'))
+    })
+
+  </script>
+</body>
+</html>
