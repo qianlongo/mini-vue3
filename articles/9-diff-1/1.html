@@ -175,12 +175,27 @@
             // n1.children.forEach((c) => unmount(c));
             // // 再将新的子节点进行mount
             // n2.children.forEach((c) => patch(null, c, container));
-            const oldChildren = n1.children
-            const newChildren = n2.children
-            debugger
+            const oldChildren = n1.children;
+            const newChildren = n2.children;
+            const oldLen = oldChildren.length;
+            const newLen = newChildren.length;
+            const commonLength = Math.min(oldLen, newLen);
 
-            for (let i = 0; i < oldChildren.length; i++) {
-              patch(oldChildren[i], newChildren[i])
+            // 先对比公共的部分
+            for (let i = 0; i < commonLength; i++) {
+              patch(oldChildren[i], newChildren[i]);
+            }
+
+            // newLen > oldLen表示有部分节点需要新增
+            if (newLen > commonLength) {
+              for (let i = commonLength; i < newLen; i++) {
+                patch(null, newChildren[ i ], container)
+              }
+              // 表示多余的节点需要卸载
+            } else if (oldLen > commonLength) {
+              for (let i = commonLength; i < oldLen; i++) {
+                unmount(oldChildren[ i ])
+              }
             }
           } else {
             // 文本或者空的
@@ -343,6 +358,10 @@
             type: "p",
             children: "6",
           },
+          {
+            type: "p",
+            children: "7",
+          },
         ],
       };
 
@@ -350,7 +369,7 @@
 
       setTimeout(() => {
         renderer.render(newVnode, document.querySelector("#app"));
-      }, 2000);
+      }, 1000);
 
       // const bol = ref(false)
 
