@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document</title>
+</head>
+<body>
+  <div id="app"></div>
+  <script>
+    let bucket = new WeakMap()
+    let activeEffect = null
+    let effectStack = []
+
+    function effect (fn) {
+      let effectFn = () => {
+        activeEffect = fn
+        effectStack.push(activeEffect)
+        fn()
+        effectStack.pop()
+        activeEffect = effectStack[ effectStack.length - 1 ]
+      }
+
+      effectFn()
+
+      return effectFn
+    }
+
+    function track (target, key) {
+      let depsMap = bucket.get(target)
+
+      if (!depsMap) {
+        bucket.set(target, depsMap = new Map())
+      }
+
+      let deps = depsMap.get(key)
+
+      if (!deps) {
+        depsMap.set(key, deps = new Set())
+      }
+
+      activeEffect && deps.add(activeEffect)
+    }
+
+    function trigger (target, key) {
+      const depsMap = bucket.get(target)
+
+      if (!depsMap) {
+        return
+      }
+
+      const deps = depsMap.get(key)
+
+      if (!deps) {
+        return
+      }
+
+      deps.forEach((fn) => {
+        fn()
+      })
+    }
+
+
+    function reactive (state) {
+      return new Proxy(state, {
+        get (target, key, ctx) {
+          track(target, key)
+          return Reflect.get(target, key, ctx)
+        },
+        set (target, key, value, ctx) {
+          Reflect.set(target, key, value, ctx)
+          trigger(state, key)
+        }
+      })
+    }
+
+    let state = reactive({
+      name: 'fatfish',
+      age: 1
+    })
+
+
+    let $app = document.querySelector('#app')
+
+    effect(() => {
+      $app.innerHTML = state.name + state.age
+    })
+
+    setTimeout(() => {
+      state.name = 'vue3'
+      state.age = 2
+    }, 2000)
+  </script>
+</body>
+</html>

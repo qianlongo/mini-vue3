@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document</title>
+</head>
+<body>
+  <script>
+    const State = {
+      initial: 1, // 初始状告
+      tagOpen: 2, // 标签开始状态
+      tagName: 3, // 标签名称状态
+      text: 4, // 文本状态
+      tagEnd: 5, // 结束标签状态
+      tagEndName: 6, // 结束标签名称状态
+    }
+
+    function isAlpha (char) {
+      return char >= 'a' && char <= 'z' || char >= 'A' && char <= 'Z'
+    }
+
+    function tokenize (str) {
+      // 状态机的初始状态
+      let currentState = State.initial
+      // 用于缓存字符串
+      const chars = []
+      // 生成的token会存储到tokens数组中，并作为函数的返回值返回
+      const tokens = []
+
+      while (str) {
+        // 查看第一个字符，注意并没有消费
+        const char = str[0]
+
+        switch (currentState) {
+          case State.initial:
+            // 遇到 <
+            if (char === '<') {
+              // 1. 状态机切换到标签开始状态
+              currentState = State.tagOpen
+              // 2. 消费字符<
+              str = str.slice(1)
+            } else if (isAlpha(char)) {
+              // 1. 遇到字母切换到文本状态
+              currentState = State.text
+              // 2. 将字母缓存到chars中
+              chars.push(char)
+              // 3. 消费字符
+              str.slice(1)
+            }
+            break
+            // 当状态机处于标签开始状态
+          case State.tagOpen:
+            if (isAlpha(char)) {
+              // 1. 遇到字母，切换到标签名称状态
+              currentState = State.tagName
+              // 2. 将当前字符串缓存到chars中
+              chars.push(char)
+              // 3. 消费字符
+              str = str.slice(1)
+            } else if (char === '/') {
+              // 1. 遇到/ 切换到结束状态
+              currentState = State.tagEnd
+              str = str.slice(1)
+            }
+            break
+          case State.tagName:
+            if (isAlpha(char)) {
+              // 1. 遇到字母，当前处于标签名称状态，所以不需要切换状态
+              // 但是需要将当前字符缓存带chars中
+              chars.push(char)
+              // 2. 消费字符
+              str = str.slice(1)
+            } else if (char === '>') {
+              // 1. 遇到字符>，切换到初始状态
+              currentState = State.initial
+              // 2. 同时创建一个标签Token，并添加到tokens数组中
+              // 注意，此时chars数组中缓存的字符就是标签名称
+              tokens.push({
+                type: 'tag',
+                name: chars.join('')
+              })
+              // 3. chars数组的内容已经被消费，清空它
+              chars.length = 0
+              // 4. 同时消费str
+              str = str.slice(1)
+            }
+            break  
+            // 状态机当前处于文本状态
+            case State.text :
+              if (isAlpha(char)) {
+                // 1. 遇到字母，保持状态不变，但应该将当前字符缓存到chars数组
+                chars.push(char)
+                // 2. 消费当前字符
+                str = str.slice(1)
+              } else if (char === '<') {
+                // 1. 遇到<，切换到标签开始状态
+                currentState = State.initial
+                // 2. 从文本状态 --> 标签开始状态，此时应该创建文本Token，并添加到tokens数组
+                // 注意此时chars数组中的字符就是
+              }
+            break
+        }
+      }
+    }
+  </script>
+</body>
+</html>
