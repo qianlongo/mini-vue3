@@ -130,10 +130,10 @@ function traverse (value, seen = new Set()) {
     traverse(value[ k ], seen)
   }
 
-  return value
+  return { ...value }
 }
 
-function watch (source, cb) {
+function watch (source, cb, options = {}) {
   let getter
 
   if (typeof source === 'function') {
@@ -143,17 +143,24 @@ function watch (source, cb) {
   }
 
   let newValue, oldValue
+  const job = () => {
+    newValue = effectFn()
+    cb(newValue, oldValue)
+    oldValue = newValue
+  }
 
   const effectFn = effect(getter, {
     lazy: true,
     scheduler () {
-      newValue = effectFn()
-      cb(newValue, oldValue)
-      oldValue = newValue
+      job()
     }
   })
 
-  oldValue = effectFn()
+  if (options.immediate) {
+    job()
+  } else {
+    oldValue = effectFn()
+  }
 }
 
 let state = reactive({
@@ -161,15 +168,19 @@ let state = reactive({
   age: 100
 })
 
-// watch(state, (newVal, oldVal) => {
-//   console.log(newVal, oldVal)
-// })
-
-watch(() => {
-  return state.age
-}, (newVal, oldVal) => {
+watch(state, (newVal, oldVal) => {
   console.log(newVal, oldVal)
+}, {
+  immediate: true
 })
+
+// watch(() => {
+//   return state.age
+// }, (newVal, oldVal) => {
+//   console.log(newVal, oldVal)
+// }, {
+//   immediate: true,
+// })
 
 state.age = 1
 state.age = 2
