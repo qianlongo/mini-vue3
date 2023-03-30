@@ -100,7 +100,6 @@ function computed (getter) {
     lazy: true,
     scheduler () {
       dirty = true
-      trigger(obj, 'value')
     }
   })
   
@@ -112,8 +111,6 @@ function computed (getter) {
         dirty = false
       }
 
-      track(obj, 'value')
-
       return value
     }
   }
@@ -121,18 +118,4 @@ function computed (getter) {
   return obj
 }
 
-let data = {
-  foo: 1,
-  bar: 2
-}
-const obj = reactive(data)
 
-const sum = computed(() => {
-  return obj.foo + obj.bar
-})
-
-effect(() => {
-  console.log(sum.value)
-})
-
-obj.foo++
