@@ -118,4 +118,60 @@ function computed (getter) {
   return obj
 }
 
+function traverse (value, seen = new Set()) {
+  if (typeof value !== 'object' || value === null || seen.has(value)) {
+    return
+  }
+
+  seen.add(value)
+
+  for (const k in value) {
+    // value[ k ]即完成了读取，收集依赖
+    traverse(value[ k ], seen)
+  }
+
+  return value
+}
+
+function watch (source, cb) {
+  let getter
+
+  if (typeof source === 'function') {
+    getter = source
+  } else {
+    getter = () => traverse(source)
+  }
+
+  let newValue, oldValue
+
+  const effectFn = effect(getter, {
+    lazy: true,
+    scheduler () {
+      newValue = effectFn()
+      cb(newValue, oldValue)
+      oldValue = newValue
+    }
+  })
+
+  oldValue = effectFn()
+}
+
+let state = reactive({
+  name: 'vue2',
+  age: 100
+})
+
+// watch(state, (newVal, oldVal) => {
+//   console.log(newVal, oldVal)
+// })
+
+watch(() => {
+  return state.age
+}, (newVal, oldVal) => {
+  console.log(newVal, oldVal)
+})
+
+state.age = 1
+state.age = 2
+
 
