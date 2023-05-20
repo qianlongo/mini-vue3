@@ -170,7 +170,7 @@
         return value
       }
       
-      const watch = (source, cb) => {
+      const watch = (source, cb, options = {}) => {
         let getter
 
         if (typeof source === 'function') {
@@ -181,26 +181,38 @@
 
         let oldValue, newValue
 
+        const job = () => {
+          newValue = effectFn()
+          cb(newValue, oldValue)
+          oldValue = newValue
+        }
+
         const effectFn = effect(getter, {
           scheduler () {
-            newValue = effectFn()
-            cb(newValue, oldValue)
-            oldValue = newValue
+            job()
           },
           lazy: true,
         })
 
-        oldValue = effectFn()
+        if (options.immediate) {
+          job()
+        } else {
+          oldValue = effectFn()
+        }
       }
 
       watch(state, (newValue, oldValue) => {
         console.log('变化了', newValue, oldValue)
+      }, {
+        immediate: true
       })
 
       watch(() => {
         return state.foo
       }, (newValue, oldValue) => {
         console.log('foo变化了', newValue, oldValue)
+      }, {
+        immediate: true
       })
       
     </script>
