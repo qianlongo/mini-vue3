@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document</title>
+</head>
+<body>
+  <script src="https://unpkg.com/@vue/reactivity@3.0.5/dist/reactivity.global.js"></script>
+  <div id="app"></div>
+  <script>
+    const { effect, ref } = VueReactivity
+
+    const createRenderer = (options = {}) => {
+      const {
+        createElement,
+        setElementText,
+        insert,
+        patchProps
+      } = options
+
+      function render (vnode, container) {
+        // 有新的vnode，则可能是挂载或者更新
+        if (vnode) {
+          patch(container._vnode, vnode, container)
+        } else {
+          if (container._vnode) {
+            container.innerHTML = ''
+          }
+        }
+
+        container._vnode = vnode
+      }
+
+      function patch (n1, n2, container) {
+        if (!n1) {
+          mountElement(n2, container)  
+        } else {
+          // 意味着是打补丁
+        }
+      }
+
+      function hydrate (vnode, container) {
+
+      }
+
+      function mountElement (vnode, container) {
+        const el = createElement(vnode.type)
+        // 挂载元素的属性
+        if (vnode.props) {
+          for (const key in vnode.props) {
+            patchProps(el, key, null, vnode.props[ key ])
+          }
+        }
+
+        // 以下部分是挂载元素的子节点
+        if (typeof vnode.children === 'string') {
+          setElementText(el, vnode.children)
+        } else if (Array.isArray(vnode.children)) {
+          // 挂载子节点
+          vnode.children.forEach((child) => {
+            patch(null, child, el)
+          })
+        }
+
+        // container.appendChild(ele)
+        insert(el, container)
+      }
+
+      return {
+        render,
+        hydrate
+      }
+    }
+
+    const renderer = createRenderer({
+      createElement (tag) {
+        return document.createElement(tag)
+      },
+      setElementText (el, text) {
+        el.textContent = text
+      },
+      insert (el, parent, anchor = null) {
+        parent.insertBefore(el, anchor)
+      },
+      patchProps (el, key, prevValue, nextValue) {
+        function shouldSetAsProps (el, key, value) {
+          if (key === 'form' && el.tagName === 'INPUT') {
+            return false
+          }
+
+          return key in el
+        }
+
+        if (shouldSetAsProps(el, key, vnode.props[ key ])) {
+          const type = typeof el[ key ]
+          const value = vnode.props[ key ]
+
+          if (typeof type === 'boolean' && value === '') {
+            el[ key ] = true
+          } else {
+            el[ key ] = value
+          }
+        } else {
+          el.setAttribute(key, vnode.props[key])
+        }
+      }
+    })
+
+    const vnode = {
+      type: 'div',
+      props: {
+        id: 'foo'
+      },
+      children: [{
+        type: 'p',
+        children: 'hello'
+      }]
+    }
+
+    renderer.render(vnode, document.querySelector('#app'))
+  </script>
+</body>
+</html>
