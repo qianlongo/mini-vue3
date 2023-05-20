@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document</title>
+</head>
+<body>
+  <script src="https://unpkg.com/@vue/reactivity@3.0.5/dist/reactivity.global.js"></script>
+  <div id="app"></div>
+  <script>
+    const { effect, ref } = VueReactivity
+
+    // const renderer = (domString, container) => {
+    //   container.innerHTML = domString
+    // }
+
+    // const count = ref(1)
+
+    // effect(() => {
+    //   renderer(`
+    //     <h2>${count.value}</h2>
+    //   `, document.querySelector('#app'))
+    // })
+
+    // count.value++
+
+    const createRenderer = (options = {}) => {
+      const {
+        createElement,
+        setElementText,
+        insert
+      } = options
+
+      function render (vnode, container) {
+        // 有新的vnode，则可能是挂载或者更新
+        if (vnode) {
+          patch(container._vnode, vnode, container)
+        } else {
+          if (container._vnode) {
+            container.innerHTML = ''
+          }
+        }
+
+        container._vnode = vnode
+      }
+
+      function patch (n1, n2, container) {
+        if (!n1) {
+          mountElement(n2, container)  
+        } else {
+          // 意味着是打补丁
+        }
+      }
+
+      function hydrate (vnode, container) {
+
+      }
+
+      function mountElement (vnode, container) {
+        const el = createElement(vnode.type)
+
+        if (typeof vnode.children === 'string') {
+          setElementText(el, vnode.children)
+        }
+
+        // container.appendChild(ele)
+        insert(el, container)
+      }
+
+      return {
+        render,
+        hydrate
+      }
+    }
+
+    const vnode = {
+      type: 'h1',
+      children: 'hello world'
+    }
+
+    const renderer = createRenderer({
+      createElement (tag) {
+        return document.createElement(tag)
+      },
+      setElementText (el, text) {
+        el.textContent = text
+      },
+      insert (el, parent, anchor = null) {
+        parent.insertBefore(el, anchor)
+      }
+    })
+
+    renderer.render(vnode, document.querySelector('#app'))
+  </script>
+</body>
+</html>
