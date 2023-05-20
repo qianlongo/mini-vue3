@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+  </head>
+  <body>
+    <div id="app"></div>
+    <script>
+      const bucket = new WeakMap();
+      const effectStack = []
+      // 重新定义bucket数据类型为WeakMap
+      let activeEffect;
+      const effect = function (fn) {
+        const effectFn = () => {
+          cleanup(effectFn)
+          activeEffect = effectFn
+          // 入栈
+          effectStack.push(effectFn)
+          fn()
+          // 出栈
+          effectStack.pop()
+          activeEffect = effectStack[ effectStack.length - 1 ]
+        }
+        // 用来存储哪些依赖集合包含这个副作用函数
+        effectFn.deps = []
+        effectFn()
+        console.log(effectStack.length, '---')
+        // 非常重要
+        // activeEffect = null
+      };
+      // track表示追踪的意思
+      function track(target, key) {
+        // activeEffect无值意味着没有执行effect函数，无法收集依赖，直接return掉
+        if (!activeEffect) {
+          return;
+        }
+        // 每个target在bucket中都是一个Map类型： key => effects
+        let depsMap = bucket.get(target);
+        // 第一次拦截，depsMap不存在，先创建联系
+        if (!depsMap) {
+          bucket.set(target, (depsMap = new Map()));
+        }
+        // 根据当前读取的key，尝试读取key的effects函数
+        let deps = depsMap.get(key);
+
+        if (!deps) {
+          // deps本质是个Set结构，即一个key可以存在多个effect函数，被多个effect所依赖
+          depsMap.set(key, (deps = new Set()));
+        }
+        // 将激活的effectFn存进桶中
+        deps.add(activeEffect);
+        // 将当前的key的依赖集合存入当前函数的deps种，方便下次activeEffect执行的时候删除
+        activeEffect.deps.push(deps)
+      }
+      // trigger执行依赖
+      function trigger(target, key) {
+        // 读取depsMap 其结构是 key => effects
+        const depsMap = bucket.get(target);
+
+        if (!depsMap) {
+          return;
+        }
+        // 真正读取依赖当前属性值key的effects
+        const effects = depsMap.get(key);
+        // 解决cleanup 执行会无限执行的问题
+        const effectsToRun = new Set(effects)
+        // 挨个执行即可
+        effectsToRun.forEach((fn) => fn());
+      }
+
+      function cleanup (effectFn) {
+        for (let i = 0; i < effectFn.deps.length; i++) {
+          const deps = effectFn.deps[i]
+          deps.delete(effectFn)
+        }
+        effectFn.deps.length = 0
+      }
+      // 统一对外暴露响应式函数
+      function reactive(state) {
+        return new Proxy(state, {
+          get(target, key) {
+            const value = target[key];
+
+            track(target, key);
+            // console.log(`get ${key}: ${value}`)
+            return value;
+          },
+          set(target, key, newValue) {
+            // console.log(`set ${key}: ${newValue}`)
+            // 设置属性值
+            target[key] = newValue;
+
+            trigger(target, key);
+          },
+        });
+      }
+
+      const state = reactive({
+        foo: true,
+        bar: true
+      })
+
+      let temp1, temp2
+
+      effect(() => {
+        console.log('执行1')
+        effect(() => {
+          console.log('执行2')
+          temp2 = state.bar
+        })
+        temp1 = state.foo
+      })
+
+      setTimeout(() => {
+        // state.foo = false
+      }, 1000)
+      
+    </script>
+  </body>
+</html>
