@@ -116,16 +116,36 @@
         foo: 1
       })
 
+      const jobQueue = new Set()
+      const p = Promise.resolve()
+      let isFlushing = false
+
+      const flushJob = () => {
+        if (isFlushing) {
+          return
+        }
+
+        isFlushing = true
+
+        p.then(() => {
+          jobQueue.forEach((job) => job())
+        }).finally(() => {
+          isFlushing = false
+        })
+      }
+
       effect(() => {
         console.log(state.foo)
       }, {
         scheduler (fn) {
-          setTimeout(() => {
-            fn()
-          }, 0)
+          // 每次数据发生变化都往队列中添加副作用函数
+          jobQueue.add(fn)
+          // 并尝试刷新job，但是一个微任务只会在事件循环中执行一次，所以哪怕foo变化了三次，最后也只会执行一次副作用函数
+          flushJob()
         }
       })
 
+      state.foo++
       state.foo++
       state.foo++
 
