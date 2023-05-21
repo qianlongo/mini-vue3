@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document</title>
+</head>
+<body>
+  <script src="https://unpkg.com/@vue/reactivity@3.0.5/dist/reactivity.global.js"></script>
+  <div id="app"></div>
+  <script>
+    const { effect, ref } = VueReactivity
+
+    const createRenderer = (options = {}) => {
+      const {
+        createElement,
+        setElementText,
+        insert,
+        patchProps
+      } = options
+
+      function render (vnode, container) {
+        // 有新的vnode，则可能是挂载或者更新
+        if (vnode) {
+          patch(container._vnode, vnode, container)
+        } else {
+          // 卸载操作
+          if (container._vnode) {
+            unmount(container._vnode)
+          }
+        }
+
+        container._vnode = vnode
+      }
+
+      function patch (n1, n2, container) {
+        // 如果旧的节点存在，并且新旧节点类型不一样，那就没有必要对比查找差异了，直接卸载旧可以
+        if (n1 && n1.type && n2.type) {
+          unmount(n1)
+          n1 = null
+        }
+
+        const { type } = n2
+        // 元素类型
+        if (typeof type === 'string') {
+          if (!n1) {
+            mountElement(n2, container)  
+          } else {
+            // 意味着是打补丁
+            patchElement(n1, n2)
+          }
+        } else if (typeof type === 'object') {
+
+        }
+      }
+
+      function hydrate (vnode, container) {
+
+      }
+
+      function mountElement (vnode, container) {
+        const el = vnode.el = createElement(vnode.type)
+        // 挂载元素的属性
+        if (vnode.props) {
+          for (const key in vnode.props) {
+            patchProps(el, key, null, vnode.props[ key ])
+          }
+        }
+
+        // 以下部分是挂载元素的子节点
+        if (typeof vnode.children === 'string') {
+          setElementText(el, vnode.children)
+        } else if (Array.isArray(vnode.children)) {
+          // 挂载子节点
+          vnode.children.forEach((child) => {
+            patch(null, child, el)
+          })
+        }
+
+        // container.appendChild(ele)
+        insert(el, container)
+      }
+
+      function unmount (vnode) {
+        const parent = vnode.el.parentNode
+
+        if (parent) {
+          parent.removeChild(vnode.el)
+        }
+      }
+
+      return {
+        render,
+        hydrate
+      }
+    }
+
+    const renderer = createRenderer({
+      createElement (tag) {
+        return document.createElement(tag)
+      },
+      setElementText (el, text) {
+        el.textContent = text
+      },
+      insert (el, parent, anchor = null) {
+        parent.insertBefore(el, anchor)
+      },
+      patchProps (el, key, prevValue, nextValue) {
+        function shouldSetAsProps (el, key, value) {
+          if (key === 'form' && el.tagName === 'INPUT') {
+            return false
+          }
+
+          return key in el
+        }
+
+        if (key === 'class') {
+          el.className = nextValue || ''  
+        } else if (shouldSetAsProps(el, key, vnode.props[ key ])) {
+          const type = typeof el[ key ]
+          const value = vnode.props[ key ]
+
+          if (typeof type === 'boolean' && value === '') {
+            el[ key ] = true
+          } else {
+            el[ key ] = value
+          }
+        } else {
+          el.setAttribute(key, vnode.props[key])
+        }
+      },
+    })
+
+    function normalizeClass (className) {
+      let classNameArray = []
+      const type = typeof className
+      // debugger
+
+      if (type === 'string') {
+        classNameArray.push(className)
+      } else if (Array.isArray(className)) {
+        // debugger
+        className.forEach((it) => {
+          classNameArray.push(normalizeClass(it))
+        })
+      } else if (type === 'object') {
+        for (const key in className) {
+          if (className[ key ]) {
+            classNameArray.push(key)
+          }
+        }
+      } 
+
+      return classNameArray.join(' ')
+    }
+
+    const vnode = {
+      type: 'div',
+      props: {
+        id: 'foo',
+        class: normalizeClass('foo-1')
+      },
+      children: [
+        {
+          type: 'p',
+          children: 'hello',
+          props: {
+            class: normalizeClass({
+              bar: true,
+              bar2: false
+            })
+          }
+        },
+        {
+          type: 'p',
+          children: 'world',
+          props: {
+            class: normalizeClass([
+              {
+                bar: true,
+                bar2: false
+              },
+              'bar3',
+              [
+                'bar4'
+              ]
+            ])
+          }
+        },
+      ]
+    }
+
+    renderer.render(vnode, document.querySelector('#app'))
+
+    setTimeout(() => {
+      renderer.render(null, document.querySelector('#app'))
+    }, 1000)
+  </script>
+</body>
+</html>
