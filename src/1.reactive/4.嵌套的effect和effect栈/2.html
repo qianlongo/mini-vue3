@@ -27,7 +27,7 @@
         // 用来存储哪些依赖集合包含这个副作用函数
         effectFn.deps = []
         effectFn()
-        console.log(effectStack.length, '---')
+        // console.log(effectStack.length, '---')
         // 非常重要
         // activeEffect = null
       };
@@ -106,16 +106,16 @@
       let temp1, temp2
 
       effect(() => {
-        console.log('执行1')
+        console.log('effectFn1')
         effect(() => {
-          console.log('执行2')
+          console.log('effectFn2')
           temp2 = state.bar
         })
         temp1 = state.foo
       })
 
       setTimeout(() => {
-        // state.foo = false
+        state.foo = false
       }, 1000)
       
     </script>

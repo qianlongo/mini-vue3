@@ -97,20 +97,28 @@
       });
 
       effect(() => {
-        console.log('执行')
+        console.log('渲染执行')
         document.querySelector('#app').innerHTML = state.ok ? state.text : 'not'
       })
 
       setTimeout(() => {
-        // 
         state.ok = false
 
         setTimeout(() => {
-          // TODO: 问题点
-          // 此时因为ok已经变成了false，我们期望的是effect不会再执行，因为执行对渲染的结果也没有变化，反而是浪费
-          state.text = 'not 2222'
+          state.text = 'other'
         }, 1000)
       }, 1000)
+
+      // setTimeout(() => {
+      //   // 
+      //   state.ok = false
+
+      //   setTimeout(() => {
+      //     // TODO: 问题点
+      //     // 此时因为ok已经变成了false，我们期望的是effect不会再执行，因为执行对渲染的结果也没有变化，反而是浪费
+      //     state.text = 'not 2222'
+      //   }, 1000)
+      // }, 1000)
       
     </script>
   </body>
