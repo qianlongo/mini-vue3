@@ -112,8 +112,22 @@
         });
       }
 
+      // const state = reactive({
+      //   num: 1
+      // })
+
+      // effect(() => {
+      //   console.log('num', state.num)
+      // })
+
+      // let count = 100
+
+      // while (count--) {
+      //   state.num++
+      // }
+
       const state = reactive({
-        foo: 1
+        num: 1
       })
 
       const jobQueue = new Set()
@@ -135,7 +149,7 @@
       }
 
       effect(() => {
-        console.log(state.foo)
+        console.log('num', state.num)
       }, {
         scheduler (fn) {
           // 每次数据发生变化都往队列中添加副作用函数
@@ -145,11 +159,13 @@
         }
       })
 
-      state.foo++
-      state.foo++
-      state.foo++
+      let count = 100
 
-      console.log('结束了')
+      while (count--) {
+        state.num++
+      }
+
+      // console.log('结束了')
 
       
     </script>

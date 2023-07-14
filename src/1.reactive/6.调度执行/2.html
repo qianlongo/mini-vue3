@@ -113,11 +113,11 @@
       }
 
       const state = reactive({
-        foo: 1
+        num: 1
       })
 
       effect(() => {
-        console.log(state.foo)
+        console.log(state.num)
       }, {
         scheduler (fn) {
           setTimeout(() => {
@@ -126,10 +126,9 @@
         }
       })
 
-      state.foo++
-      state.foo++
+      state.num++
 
-      console.log('结束了')
+      console.log('end')
 
       
     </script>

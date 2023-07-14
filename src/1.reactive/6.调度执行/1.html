@@ -106,16 +106,30 @@
       }
 
       const state = reactive({
-        foo: 1
+        num: 1
       })
 
       effect(() => {
-        console.log(state.foo)
+        console.log('num', state.num)
       })
 
-      state.foo++
+      console.log('end')
 
-      console.log('结束了')
+      state.num++
+
+      
+
+      // const state = reactive({
+      //   foo: 1
+      // })
+
+      // effect(() => {
+      //   console.log(state.foo)
+      // })
+
+      // state.foo++
+
+      // console.log('结束了')
 
       /*
         输出顺序为
